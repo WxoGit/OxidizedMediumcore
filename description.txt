@@ -26,4 +26,4 @@ Misc.
 There are also some small tweaks in the works in preparation for 1.4.5, such as the Scrying Mirror now only working on your teammates instead of globally,
 be aware the only change applied to singleplayer is the removal of vanity item drops, all other changes are only applied in multiplayer.
 
-Big thanks to youraveragegoldfish for comissioning this mod!
+Big thanks to youraveragegoldfish for commissioning this mod!
