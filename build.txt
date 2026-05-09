@@ -1,0 +1,3 @@
+displayName = Oxidized Mediumcore (PvP Mod)
+author = wxo
+version = 1.0

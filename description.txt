@@ -1,0 +1,28 @@
+Oxidized Mediumcore adds various changes to Terraria's neglected Mediumcore & PvP.
+
+Mediumcore
+Vanity items are no longer dropped when playing on a Mediumcore character, this should include dyes.
+
+Multiplayer/PvP
+Gemlock Zones:
+You can place Gemlocks correlating to your team color to establish a safe zone for your team
+These safe zones prevent other teams from griefing your base easily by making breaking blocks harder for other teams
+You need a Giant Gem correlating to your teams color to the Gemlock's protection
+You can resize the zone based on how much Glory your team has to protect a wider area of your build
+
+Glory System:
+Increase your team's glory by defeating bosses
+Glory determines the maximum size of your team's protected territory with the Gemlocks
+
+Boss Ownership System:
+Bosses can now only be damaged by the first team that summons them
+If all players of the owning team are dead, the boss ownership is transferred to the nearest team, so you can steal the boss by killing the other team's players!
+
+Party Changes:
+You can only select a party once per world. Changing teams after that can only be done by an admin player, which can be set by using the "omadmin <playername>" command on the server console.
+PVP is forced to be always enabled.
+
+Misc.
+There are also some small tweaks in the works in preparation for 1.4.5, such as the Scrying Mirror now only working on your teammates instead of globally.
+
+Big thanks to youraveragegoldfish for comissioning this mod!

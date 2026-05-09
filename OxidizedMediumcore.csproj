@@ -1,0 +1,16 @@
+﻿<Project Sdk="Tomat.Terraria.ModLoader.Sdk/2.1.0">
+	
+	<!-- General -->
+	<PropertyGroup>
+		<TmlBuildBootstrapFeatures>tomat.enablemod;ppeb.netcoredbg;lolxd87.splashskip;tomat.environmentmodlist;tomat.assethotreloading</TmlBuildBootstrapFeatures>
+	</PropertyGroup>
+	<ItemGroup>
+	  <Folder Include="Properties\" />
+	</ItemGroup>
+
+	<Target Name="AutoRestore" BeforeTargets="Build">
+		<Message Text="restoring NuGet packages..." Importance="high" />
+		<Exec Command="dotnet restore" />
+	</Target>
+
+</Project>
