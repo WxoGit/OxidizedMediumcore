@@ -1,7 +1,7 @@
 Oxidized Mediumcore adds various changes to Terraria's neglected Mediumcore & PvP.
 
 Mediumcore
-Vanity items are no longer dropped when playing on a Mediumcore character, this should include dyes.
+Vanity items are no longer dropped when playing on a Mediumcore character, this include dyes.
 
 Multiplayer/PvP
 Gemlock Zones:
@@ -23,6 +23,7 @@ You can only select a party once per world. Changing teams after that can only b
 PVP is forced to be always enabled.
 
 Misc.
-There are also some small tweaks in the works in preparation for 1.4.5, such as the Scrying Mirror now only working on your teammates instead of globally.
+There are also some small tweaks in the works in preparation for 1.4.5, such as the Scrying Mirror now only working on your teammates instead of globally,
+be aware the only change applied to singleplayer is the removal of vanity item drops, all other changes are only applied in multiplayer.
 
 Big thanks to youraveragegoldfish for comissioning this mod!
