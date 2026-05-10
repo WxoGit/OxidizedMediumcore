@@ -347,6 +347,7 @@ public sealed class GemLockRadialSystem : ModSystem
         Utils.DrawBorderStringFourWay(sb, FontAssets.MouseText.Value, label, labelPos.X, labelPos.Y, teamColor, Color.Black, Vector2.Zero);
     }
 
+    // who knows dude but now its fixed
     private Texture2D IconTexture(Option opt)
     {
         if (opt == Option.RemoveGem)
@@ -362,19 +363,53 @@ public sealed class GemLockRadialSystem : ModSystem
                 324 => ItemID.GemLockAmber,
                 _ => ItemID.GemLockAmethyst,
             };
+
+            Main.instance.LoadItem(itemID);
             return TextureAssets.Item[itemID].Value;
         }
 
         if (opt == Option.Resize)
-            return TextureAssets.Item[ItemID.MechanicalLens].Value;
+        {
+            try
+            {
+                Main.instance.LoadItem(ItemID.MechanicalLens);
+
+                var asset = TextureAssets.Item[ItemID.MechanicalLens];
+                var logger = ModContent.GetInstance<OxidizedMediumcore>().Logger;
+
+                if (asset == null)
+                {
+                    //logger.Warn("Asset was null.");
+                    return TextureAssets.MagicPixel.Value;
+                }
+
+                if (!asset.IsLoaded)
+                {
+                    //logger.Warn($"Asset was not loaded. el estado actual esss: {asset.State}");
+                    return TextureAssets.MagicPixel.Value;
+                }
+
+                return asset.Value;
+            }
+            catch (Exception ex)
+            {
+                //ModContent.GetInstance<OxidizedMediumcore>().Logger.Error($"error loading the asset: {ex.Message}\n{ex.StackTrace}");
+                return TextureAssets.MagicPixel.Value;
+            }
+        }
 
         if (opt == Option.ToggleProtection)
         {
             var zones = ModContent.GetInstance<GemLockZones>();
-            if (!zones.IsZoneEnabled(TargetOrigin))
-                return TextureAssets.Item[ItemID.GoldenKey].Value;
+            int itemID = ItemID.GoldenKey;
 
-            return TextureAssets.Item[zones.IsProtectionEnabled(TargetOrigin) ? ItemID.GoldenKey : ItemID.ChestLock].Value;
+            if (zones.IsZoneEnabled(TargetOrigin))
+            {
+                itemID = zones.IsProtectionEnabled(TargetOrigin) ? ItemID.GoldenKey : ItemID.ChestLock;
+            }
+
+            Main.instance.LoadItem(itemID);
+            return TextureAssets.Item[itemID].Value;
         }
 
         return TextureAssets.MagicPixel.Value;
