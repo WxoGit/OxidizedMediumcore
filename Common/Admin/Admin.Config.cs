@@ -7,10 +7,18 @@ using Terraria.ModLoader.IO;
 
 namespace OxidizedMediumcore.Common.Admin;
 
+public enum TileProtectionMode : byte
+{
+    None = 0,
+    Legacy = 1,
+    Restrictive = 2
+}
+
 public static class AdminConfig
 {
     public const bool ForcePvP = true;
     public static bool DisableGemCraftRecipe { get; set; } = false;
+    public static TileProtectionMode ProtectionMode { get; set; } = TileProtectionMode.Restrictive;
 
     private static readonly HashSet<string> _adminNames = new(System.StringComparer.OrdinalIgnoreCase);
 
@@ -52,6 +60,7 @@ public static class AdminConfig
         packet.Write(DisableGemCraftRecipe);
         packet.Write(BlastRadiusMultiplier);
         packet.Write(PickSpeedPenalty);
+        packet.Write((byte)ProtectionMode);
         packet.Send();
     }
 
@@ -66,6 +75,7 @@ public static class AdminConfig
         packet.Write(DisableGemCraftRecipe);
         packet.Write(BlastRadiusMultiplier);
         packet.Write(PickSpeedPenalty);
+        packet.Write((byte)ProtectionMode);
         packet.Send();
     }
 
@@ -74,6 +84,7 @@ public static class AdminConfig
         DisableGemCraftRecipe = reader.ReadBoolean();
         BlastRadiusMultiplier = reader.ReadSingle();
         PickSpeedPenalty = reader.ReadSingle();
+        ProtectionMode = (TileProtectionMode)reader.ReadByte();
     }
 
     public static void HandleChange(BinaryReader reader, int whoAmI)
@@ -87,6 +98,7 @@ public static class AdminConfig
         DisableGemCraftRecipe = reader.ReadBoolean();
         BlastRadiusMultiplier = reader.ReadSingle();
         PickSpeedPenalty = reader.ReadSingle();
+        ProtectionMode = (TileProtectionMode)reader.ReadByte();
         BroadcastSync();
     }
 }
@@ -118,6 +130,7 @@ public sealed class AdminConfigWorld : ModSystem
         tag["disableGemCraft"] = AdminConfig.DisableGemCraftRecipe;
         tag["blastRadiusMult"] = AdminConfig.BlastRadiusMultiplier;
         tag["pickSpeedPenalty"] = AdminConfig.PickSpeedPenalty;
+        tag["tileProtectionMode"] = (byte)AdminConfig.ProtectionMode;
         tag["adminNames"] = new List<string>(AdminConfig.AdminNames);
     }
 
@@ -128,6 +141,8 @@ public sealed class AdminConfigWorld : ModSystem
         AdminConfig.BlastRadiusMultiplier = tag.ContainsKey("blastRadiusMult") ? tag.Get<float>("blastRadiusMult") : 0.45f;
 
         AdminConfig.PickSpeedPenalty = tag.ContainsKey("pickSpeedPenalty") ? tag.Get<float>("pickSpeedPenalty") : 0.93f;
+
+        AdminConfig.ProtectionMode = tag.ContainsKey("tileProtectionMode") ? (TileProtectionMode)tag.Get<byte>("tileProtectionMode") : TileProtectionMode.Restrictive;
 
         if (tag.ContainsKey("adminNames"))
         {
@@ -141,6 +156,7 @@ public sealed class AdminConfigWorld : ModSystem
         writer.Write(AdminConfig.DisableGemCraftRecipe);
         writer.Write(AdminConfig.BlastRadiusMultiplier);
         writer.Write(AdminConfig.PickSpeedPenalty);
+        writer.Write((byte)AdminConfig.ProtectionMode);
 
         var admins = AdminConfig.AdminNames;
         writer.Write(admins.Count);
@@ -155,6 +171,7 @@ public sealed class AdminConfigWorld : ModSystem
         AdminConfig.DisableGemCraftRecipe = reader.ReadBoolean();
         AdminConfig.BlastRadiusMultiplier = reader.ReadSingle();
         AdminConfig.PickSpeedPenalty = reader.ReadSingle();
+        AdminConfig.ProtectionMode = (TileProtectionMode)reader.ReadByte();
 
         foreach (string name in new List<string>(AdminConfig.AdminNames))
             AdminConfig.SetAdminName(name, false);
@@ -171,6 +188,7 @@ public sealed class AdminConfigWorld : ModSystem
         AdminConfig.DisableGemCraftRecipe = false;
         AdminConfig.BlastRadiusMultiplier = 0.25f;
         AdminConfig.PickSpeedPenalty = 0.93f;
+        AdminConfig.ProtectionMode = TileProtectionMode.Restrictive;
         foreach (string name in new List<string>(AdminConfig.AdminNames))
             AdminConfig.SetAdminName(name, false);
     }

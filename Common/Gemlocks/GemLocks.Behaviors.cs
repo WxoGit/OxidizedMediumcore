@@ -107,8 +107,41 @@ public sealed class GemLockTile : GlobalTile
 
 public sealed class GemLockBuildBlock : ModPlayer
 {
+    public override void Load()
+    {
+        On_Player.PlaceThing_Walls += On_Player_PlaceThing_Walls;
+        On_Player.PlaceThing_Tiles += On_Player_PlaceThing_Tiles;
+    }
+
+    private void On_Player_PlaceThing_Tiles(On_Player.orig_PlaceThing_Tiles orig, Player self)
+    {
+        if (AdminConfig.ProtectionMode != TileProtectionMode.Restrictive)
+        {
+            orig(self);
+            return;
+        }
+
+        if (!ModContent.GetInstance<GemLockZones>().IsInsideEnemyZone(Player.tileTargetX, Player.tileTargetY, (Team)self.team))
+            orig(self);
+    }
+
+    private void On_Player_PlaceThing_Walls(On_Player.orig_PlaceThing_Walls orig, Player self)
+    {
+        if (AdminConfig.ProtectionMode != TileProtectionMode.Restrictive)
+        {
+            orig(self);
+            return;
+        }
+
+        if (!ModContent.GetInstance<GemLockZones>().IsInsideEnemyZone(Player.tileTargetX, Player.tileTargetY, (Team)self.team))
+            orig(self);
+    }
+
     public override void PostUpdateMiscEffects()
     {
+        if (AdminConfig.ProtectionMode != TileProtectionMode.Legacy)
+            return;
+
         if (Main.netMode == NetmodeID.SinglePlayer)
             return;
 
@@ -146,15 +179,6 @@ public sealed class GemLockMiningProtection : GlobalTile
 
             return (int)(damage * (1f - AdminConfig.PickSpeedPenalty));
         });
-    }
-}
-
-public sealed class GemLockMiningFatigue : ModPlayer
-{
-    public override void PostUpdateMiscEffects() 
-    {
-        if (Main.netMode == NetmodeID.SinglePlayer)
-            return;
     }
 }
 

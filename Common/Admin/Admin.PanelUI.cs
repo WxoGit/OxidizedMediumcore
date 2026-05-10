@@ -21,7 +21,7 @@ public static class AdminPanelUI
     public static float TitleScale => 0.85f;
     public static float RowScale => 0.70f;
     private static int PlayerAreaMaxH => 110;
-    private static int HeaderH => 158;
+    private static int HeaderH => 178;
     private static int GloryHeaderH => 164;
     private static int _totalPlayerCount = 0;
     private static int PlayerContentH => _totalPlayerCount * 22;
@@ -86,6 +86,27 @@ public static class AdminPanelUI
                 AdminConfig.SendChange();
             string state = AdminConfig.DisableGemCraftRecipe ? "allowed to be crafted" : "blocked from being crafted";
             Main.NewText($"Giant gems are now {state}", Color.White.R, Color.White.G, Color.White.B);
+        });
+
+        contentY += 4f;
+
+        string modeStr = AdminConfig.ProtectionMode switch
+        {
+            TileProtectionMode.None => "None",
+            TileProtectionMode.Legacy => "Legacy",
+            TileProtectionMode.Restrictive => "Restrictive",
+            _ => "Unknown"
+        };
+        Color modeCol = AdminConfig.ProtectionMode == TileProtectionMode.None ? Color.IndianRed : (AdminConfig.ProtectionMode == TileProtectionMode.Legacy ? Color.Gold : Color.LightGreen);
+
+        DrawModeRow(sb, label: "Tile protection", valueStr: modeStr, valueCol: modeCol, rowX: anchorX, contentX: contentX, ref contentY, clicked: clicked, onToggle: () =>
+        {
+            AdminConfig.ProtectionMode = (TileProtectionMode)(((int)AdminConfig.ProtectionMode + 1) % 3);
+            if (Main.netMode == NetmodeID.Server)
+                AdminConfig.BroadcastSync();
+            else
+                AdminConfig.SendChange();
+            Main.NewText($"Tile protection is now {AdminConfig.ProtectionMode}", Color.White.R, Color.White.G, Color.White.B);
         });
 
         contentY += 4f;
@@ -279,6 +300,27 @@ public static class AdminPanelUI
 
         string valueStr = value ? "Allowed" : "Blocked";
         Color valueCol = value ? Color.LightGreen : Color.IndianRed;
+        float vw = FontAssets.ItemStack.Value.MeasureString(valueStr).X * RowScale;
+        float rightX = contentX + (PanelW - PanelPad * 2.25f) - vw;
+
+        Utils.DrawBorderString(sb, valueStr, new Vector2(rightX, y), valueCol, RowScale);
+
+        if (hovered && clicked)
+            onToggle();
+
+        y += RowH;
+    }
+
+    private static void DrawModeRow(SpriteBatch sb, string label, string valueStr, Color valueCol, int rowX, float contentX, ref float y, bool clicked, System.Action onToggle)
+    {
+        var rowRect = new Rectangle(rowX + 2, (int)y, PanelW - 4, RowH);
+        bool hovered = rowRect.Contains(Main.mouseX, Main.mouseY);
+
+        if (hovered)
+            sb.Draw(TextureAssets.MagicPixel.Value, rowRect, Color.White * 0.1f);
+
+        Utils.DrawBorderString(sb, label + ":", new Vector2(contentX, y), Color.LightSteelBlue, RowScale);
+
         float vw = FontAssets.ItemStack.Value.MeasureString(valueStr).X * RowScale;
         float rightX = contentX + (PanelW - PanelPad * 2.25f) - vw;
 
