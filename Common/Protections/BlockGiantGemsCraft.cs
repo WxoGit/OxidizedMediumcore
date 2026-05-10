@@ -9,7 +9,7 @@ namespace OxidizedMediumcore.Common.Protections;
 
 public sealed class BlockGiantGemsCraft : ModSystem
 {
-	private static readonly int[] GiantGemIDs = new int[7] { 1522, 1523, 1524, 1525, 1526, 1527, 3643 };
+	private static readonly int[] GiantGemIDs = [1522, 1523, 1524, 1525, 1526, 1527, 3643];
 
 	public override void PostAddRecipes()
 	{

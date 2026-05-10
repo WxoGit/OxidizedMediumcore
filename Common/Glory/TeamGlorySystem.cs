@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using OxidizedMediumcore.Common.BossOwnership;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,6 +10,7 @@ using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 using OxidizedMediumcore.Common.Admin;
+using OxidizedMediumcore.Common.Gemlocks;
 
 namespace OxidizedMediumcore.Common.Glory;
 
@@ -21,17 +21,6 @@ public sealed class TeamGlorySystem : ModSystem
     public const int HardCapHalfW = 200;
     public const int HardCapHalfH = 200;
 
-    private const int GloryPerTileW = 7;
-    private const int GloryPerTileH = 7;
-
-    internal const int GloryKillPreHMOptional = 20;
-    internal const int GloryKillPreHMGlobal = 45;
-    internal const int GloryKillHMOptional = 80;
-    internal const int GloryKillHMGlobal = 60;
-    internal const int GloryKillMoonLord = 115;
-
-    internal const int HardmodeGloryFloor = 402;
-
     private readonly int[] _glory = new int[6];
 
     internal bool _retinazarDead;
@@ -41,7 +30,6 @@ public sealed class TeamGlorySystem : ModSystem
     internal bool AllMechsDead => _retinazarDead && _spazmatismDead && _destroyerDead && _skeletronPrimeDead;
 
     private readonly HashSet<int> _defeatedGlobalBosses = [];
-
     private readonly Dictionary<int, Team> _optionalBossLastKiller = [];
     private readonly Dictionary<int, HashSet<Team>> _optionalBossGloryReceived = [];
 
@@ -141,17 +129,8 @@ public sealed class TeamGlorySystem : ModSystem
         return i >= 0 && i < _glory.Length ? _glory[i] : 0;
     }
 
-    public int GetMaxHalfWidth(Team team)
-    {
-        int bonus = GetGlory(team) / GloryPerTileW;
-        return Math.Min(BaseHalfW + bonus, HardCapHalfW);
-    }
-
-    public int GetMaxHalfHeight(Team team)
-    {
-        int bonus = GetGlory(team) / GloryPerTileH;
-        return Math.Min(BaseHalfH + bonus, HardCapHalfH);
-    }
+    public int GetMaxHalfWidth(Team team) => Math.Min(BaseHalfW + GetGlory(team) / 7, HardCapHalfW);
+    public int GetMaxHalfHeight(Team team) => Math.Min(BaseHalfH + GetGlory(team) / 7, HardCapHalfH);
 
     internal bool RegisterMechDeath(int npcType)
     {
@@ -165,21 +144,13 @@ public sealed class TeamGlorySystem : ModSystem
     private static int GloryAmountForGlobalBoss(int npcType)
     {
         if (npcType == NPCID.MoonLordCore)
-            return GloryKillMoonLord;
+            return 115;
 
-        if (PreHardmodeBosses.Contains(npcType) || npcType == NPCID.WallofFlesh)
-            return GloryKillPreHMGlobal;
-
-        return GloryKillHMGlobal;
+        return (PreHardmodeBosses.Contains(npcType) || npcType == NPCID.WallofFlesh) ? 45 : 60;
     }
 
-    private static int GloryAmountForOptionalBoss(int npcType)
-    {
-        if (HardmodeOptionalBosses.Contains(npcType))
-            return GloryKillHMOptional;
-
-        return GloryKillPreHMOptional;
-    }
+    private static int GloryAmountForOptionalBoss(int npcType) =>
+        HardmodeOptionalBosses.Contains(npcType) ? 80 : 20;
 
     internal bool TryGrantGlobalBossGlory(int npcType)
     {
@@ -206,16 +177,18 @@ public sealed class TeamGlorySystem : ModSystem
 
         for (int t = 1; t <= 5; t++)
         {
-            _glory[t] = HardmodeGloryFloor;
+            _glory[t] = 402;
             if (Main.netMode == NetmodeID.Server)
                 BroadcastGlorySync((Team)t);
         }
 
-        string msg = $"[Glory] Hardmode activated! All parties reset to {HardmodeGloryFloor} glory.";
-        ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(msg), new Color(255, 200, 80) { A = 255 });
+        ChatHelper.BroadcastChatMessage(
+            NetworkText.FromLiteral("Hardmode activated! All parties reset to 402 glory."),
+            new Color(255, 200, 80, 255));
     }
 
-    internal bool WasKilledByDifferentTeam(int npcType, Team killer) => _optionalBossLastKiller.TryGetValue(npcType, out Team last) && last != Team.None && last != killer;
+    internal bool WasKilledByDifferentTeam(int npcType, Team killer) =>
+        _optionalBossLastKiller.TryGetValue(npcType, out Team last) && last != Team.None && last != killer;
 
     internal void HandleOptionalBossKill(int npcType, Team killer, bool penalize = false)
     {
@@ -258,8 +231,8 @@ public sealed class TeamGlorySystem : ModSystem
             return;
 
         string bossName = Lang.GetNPCNameValue(npcType);
-        string msg = $"[Glory] {TeamName(newKiller)} party stole {bossName} from {TeamName(prevKiller)} party — glory has been transferred!";
-        Color col = Gemlocks.GemLockZones.TeamColor(newKiller) * 1.2f;
+        string msg = $"{GemLockHelper.GetTeamName(newKiller)} party stole {bossName} from {GemLockHelper.GetTeamName(prevKiller)} party — glory transferred!";
+        Color col = GemLockZones.TeamColor(newKiller) * 1.2f;
         col.A = 255;
         ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(msg), col);
     }
@@ -271,13 +244,15 @@ public sealed class TeamGlorySystem : ModSystem
             return;
 
         _glory[i] = Math.Max(0, _glory[i] + amount);
+
         if (Main.netMode == NetmodeID.Server)
             BroadcastGlorySync(team);
+
         if (broadcast && amount != 0)
             AnnounceGloryChange(team, amount);
 
         if (amount < 0)
-            ModContent.GetInstance<Gemlocks.GemLockZones>().EnforceLimitsForTeam(team);
+            ModContent.GetInstance<GemLockZones>().EnforceLimitsForTeam(team);
     }
 
     private static void AnnounceGloryChange(Team team, int delta)
@@ -286,16 +261,16 @@ public sealed class TeamGlorySystem : ModSystem
             return;
 
         string sign = delta > 0 ? "+" : "";
-        string msg = $"[Glory] {TeamName(team)} party: {sign}{delta} glory";
-        Color col = Gemlocks.GemLockZones.TeamColor(team) * 1.2f;
+        Color col = GemLockZones.TeamColor(team) * 1.2f;
         col.A = 255;
-        ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(msg), col);
+        ChatHelper.BroadcastChatMessage(
+            NetworkText.FromLiteral($"{GemLockHelper.GetTeamName(team)} party: {sign}{delta} glory"),
+            col);
     }
 
     private void BroadcastGlorySync(Team team, int ignoreClient = -1)
     {
-        var mod = ModContent.GetInstance<OxidizedMediumcore>();
-        var packet = mod.GetPacket();
+        var packet = ModContent.GetInstance<OxidizedMediumcore>().GetPacket();
         packet.Write((byte)OxidizedMediumcore.PacketID.GlorySync);
         packet.Write((byte)team);
         packet.Write(_glory[(int)team]);
@@ -320,13 +295,13 @@ public sealed class TeamGlorySystem : ModSystem
         var team = (Team)reader.ReadByte();
         int glory = reader.ReadInt32();
         int i = (int)team;
-        
+        var inst = ModContent.GetInstance<TeamGlorySystem>();
+
         if (Main.netMode == NetmodeID.Server)
         {
             if (!Main.player[whoAmI].GetModPlayer<AdminPlayer>().IsAdmin)
                 return;
 
-            var inst = ModContent.GetInstance<TeamGlorySystem>();
             if (i >= 0 && i < inst._glory.Length)
                 inst._glory[i] = glory;
 
@@ -334,22 +309,17 @@ public sealed class TeamGlorySystem : ModSystem
         }
         else
         {
-            var inst = ModContent.GetInstance<TeamGlorySystem>();
             if (i >= 0 && i < inst._glory.Length)
                 inst._glory[i] = glory;
         }
     }
 
-    /// <summary>
-    /// Returns true if there are no more active EoW segments of any kind in the world.
-    /// </summary>
     internal static bool IsLastEoWSegment()
     {
         foreach (var npc in Main.npc)
-        {
             if (npc.active && EoWSegmentTypes.Contains(npc.type))
                 return false;
-        }
+
         return true;
     }
 
@@ -372,22 +342,12 @@ public sealed class TeamGlorySystem : ModSystem
         tag["optBossIds"] = bossIds;
         tag["optBossTeams"] = bossTeams;
 
-        var grBossIds = new List<int>();
-        var grTeamLists = new List<int[]>();
+        var flat = new List<int>();
         foreach (var (npcType, teams) in _optionalBossGloryReceived)
         {
-            grBossIds.Add(npcType);
-            var arr = new int[teams.Count];
-            int idx = 0;
-            foreach (var t in teams) arr[idx++] = (int)t;
-            grTeamLists.Add(arr);
-        }
-        var flat = new List<int>();
-        for (int i = 0; i < grBossIds.Count; i++)
-        {
-            flat.Add(grBossIds[i]);
-            flat.Add(grTeamLists[i].Length);
-            foreach (var t in grTeamLists[i]) flat.Add(t);
+            flat.Add(npcType);
+            flat.Add(teams.Count);
+            foreach (var t in teams) flat.Add((int)t);
         }
         tag["optGloryFlat"] = flat;
     }
@@ -446,7 +406,7 @@ public sealed class TeamGlorySystem : ModSystem
         writer.Write(_skeletronPrimeDead);
 
         writer.Write(_defeatedGlobalBosses.Count);
-        foreach (var b in _defeatedGlobalBosses) writer.Write(b);
+        foreach (int b in _defeatedGlobalBosses) writer.Write(b);
 
         writer.Write(_optionalBossLastKiller.Count);
         foreach (var kvp in _optionalBossLastKiller)
@@ -478,7 +438,8 @@ public sealed class TeamGlorySystem : ModSystem
 
         _optionalBossLastKiller.Clear();
         int count2 = reader.ReadInt32();
-        for (int i = 0; i < count2; i++) _optionalBossLastKiller[reader.ReadInt32()] = (Team)reader.ReadByte();
+        for (int i = 0; i < count2; i++)
+            _optionalBossLastKiller[reader.ReadInt32()] = (Team)reader.ReadByte();
 
         _optionalBossGloryReceived.Clear();
         int count3 = reader.ReadInt32();
@@ -513,16 +474,6 @@ public sealed class TeamGlorySystem : ModSystem
 
         return false;
     }
-
-    internal static string TeamName(Team t) => t switch
-    {
-        Team.Red => "Red",
-        Team.Green => "Green",
-        Team.Blue => "Blue",
-        Team.Yellow => "Yellow",
-        Team.Pink => "Pink",
-        _ => "Unknown",
-    };
 
     internal static bool IsTrackedBossType(int npcType) => AllTrackedBossTypes.Contains(npcType);
 }

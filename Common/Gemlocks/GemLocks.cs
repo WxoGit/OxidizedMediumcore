@@ -36,7 +36,6 @@ public sealed class GemLockZones : ModSystem
 
     public int GetActivationTimer(Point origin) => _zones.TryGetValue(origin, out var z) ? z.ActivationTimer : 0;
 
-
     private static int GetTeamMaxHalfW(Point origin)
     {
         Team team = GemLockHelper.GetTeamForOrigin(origin);
@@ -54,7 +53,6 @@ public sealed class GemLockZones : ModSystem
 
         return ModContent.GetInstance<TeamGlorySystem>().GetMaxHalfHeight(team);
     }
-
 
     private void ApplySetZone(Point origin, int halfWidth, int halfHeight)
     {
@@ -591,16 +589,6 @@ public sealed class GemLockZones : ModSystem
         _hasGem.Clear();
         _zoneActive.Clear();
     }
-
-    public static int TeamDustType(Team team) => team switch
-    {
-        Team.Red => DustID.RedTorch,
-        Team.Green => DustID.GreenTorch,
-        Team.Blue => DustID.BlueTorch,
-        Team.Yellow => DustID.YellowTorch,
-        Team.Pink => DustID.PinkTorch,
-        _ => DustID.Torch,
-    };
 
     public static Color TeamColor(Team team) => team switch
     {

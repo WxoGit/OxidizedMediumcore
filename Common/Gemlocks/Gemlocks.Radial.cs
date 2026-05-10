@@ -18,36 +18,22 @@ namespace OxidizedMediumcore.Common.Gemlocks;
 public sealed class GemLockRadialSystem : ModSystem
 {
     public enum Option { None = -1, RemoveGem = 0, Resize = 1, ToggleProtection = 2 }
+
     public bool Active;
     public Point TargetOrigin;
-
-    private const float Radius = 65f;
-    private const float HitRadius = 19f;
-    private bool _onMenu;
-
     public bool ResizeMode;
+
+    private bool _onMenu;
     private int _resizePreviewHW;
     private int _resizePreviewHH;
     private int _resizeAnimTimer;
-
     private float _openAnimTimer;
-    private const float OpenAnimDuration = 12f;
-
     private int _resizeGloryCapW;
     private int _resizeGloryCapH;
 
-    // --- Breath + hover scale per-button ---
-    private const int OptionCount = 3;
-    // Current interpolated scale for each button (lerped toward target each frame)
-    private readonly float[] _buttonScale = new float[OptionCount];
-    // Accumulated time for the breathing sine wave per button
-    private readonly float[] _breathTimer = new float[OptionCount];
-    // Base scale when idle (no hover)
-    private const float BaseScale = 1f;
-    // Scale target when hovered
-    private const float HoverScale = 1.22f;
-    // Lerp speed toward target (higher = snappier)
-    private const float ScaleLerpSpeed = 0.18f;
+    // maybe this could have done without arrays using only globaltime?? but mehh lul
+    private readonly float[] _buttonScale = new float[3];
+    private readonly float[] _breathTimer = new float[3];
 
     private Vector2 TileScreenPos => new Vector2((TargetOrigin.X + 1.5f) * 16f, (TargetOrigin.Y + 1.5f) * 16f) - Main.screenPosition;
     private Vector2 TileWorldCenter => new Vector2((TargetOrigin.X + 1.5f) * 16f, (TargetOrigin.Y + 1.5f) * 16f);
@@ -61,21 +47,20 @@ public sealed class GemLockRadialSystem : ModSystem
         TargetOrigin = new Point(originX, originY);
         _openAnimTimer = 0f;
 
-        // Reset per-button state on open
-        for (int i = 0; i < OptionCount; i++)
+        for (int i = 0; i < 3; i++)
         {
             _buttonScale[i] = 0f;
-            _breathTimer[i] = i * (MathF.PI * 2f / OptionCount); // stagger phases so they don't all pulse in sync
+            _breathTimer[i] = i * (MathF.PI * 2f / 3);
         }
     }
 
     private Vector2 GetOptionPos(Option opt)
     {
-        float t = _openAnimTimer / OpenAnimDuration;
+        float t = _openAnimTimer / 12f;
         t = 1f - (1f - t) * (1f - t) * (1f - t);
 
         float angle = -MathF.PI / 2f + (int)opt * (2f * MathF.PI / 3f);
-        Vector2 target = TileScreenPos + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * Radius;
+        Vector2 target = TileScreenPos + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * 65f;
         return Vector2.Lerp(TileScreenPos, target, t);
     }
 
@@ -100,7 +85,7 @@ public sealed class GemLockRadialSystem : ModSystem
             return;
 
         if (!ResizeMode)
-            _openAnimTimer = Math.Min(_openAnimTimer + 1f, OpenAnimDuration);
+            _openAnimTimer = Math.Min(_openAnimTimer + 1f, 12f);
 
         Player player = Main.LocalPlayer;
 
@@ -163,20 +148,16 @@ public sealed class GemLockRadialSystem : ModSystem
 
         bool isOwnTeam = (Team)Main.LocalPlayer.team == lockTeam;
 
-        bool activeElsewhere = !ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin)
-                               && ModContent.GetInstance<GemLockZones>().HasActiveZoneElsewhere(TargetOrigin);
-
-        bool enemyConflict = !ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin)
-                             && ModContent.GetInstance<GemLockZones>().HasOverlappingEnemyZone(TargetOrigin);
-
-        bool tryingToEnableProtection = ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin)
-                                        && !ModContent.GetInstance<GemLockZones>().IsProtectionEnabled(TargetOrigin);
+        var zones = ModContent.GetInstance<GemLockZones>();
+        bool activeElsewhere = !zones.IsZoneEnabled(TargetOrigin) && zones.HasActiveZoneElsewhere(TargetOrigin);
+        bool enemyConflict = !zones.IsZoneEnabled(TargetOrigin) && zones.HasOverlappingEnemyZone(TargetOrigin);
+        bool tryingToEnable = zones.IsZoneEnabled(TargetOrigin) && !zones.IsProtectionEnabled(TargetOrigin);
 
         return opt switch
         {
             Option.Resize => !isOwnTeam,
-            Option.ToggleProtection => (!isOwnTeam && !ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin))
-                                       || (!isOwnTeam && tryingToEnableProtection)
+            Option.ToggleProtection => (!isOwnTeam && !zones.IsZoneEnabled(TargetOrigin))
+                                       || (!isOwnTeam && tryingToEnable)
                                        || activeElsewhere
                                        || enemyConflict,
             _ => false,
@@ -198,35 +179,32 @@ public sealed class GemLockRadialSystem : ModSystem
         bool anyHovered = false;
         _onMenu = false;
 
-        float t = _openAnimTimer / OpenAnimDuration;
+        float t = _openAnimTimer / 12f;
         float eased = 1f - (1f - t) * (1f - t) * (1f - t);
 
-        // ---- Per-button breath + hover scale update ----
-        // First pass: determine which button is hovered (only one can be)
-        bool[] isHovered = new bool[OptionCount];
+        bool[] isHovered = new bool[3];
         bool anyHoveredCheck = false;
-        for (int i = 0; i < OptionCount; i++)
+        for (int i = 0; i < 3; i++)
         {
             Option opt = (Option)i;
             bool restricted = IsTeamRestricted(opt);
             Vector2 iconPos = GetOptionPos(opt);
-            bool hov = !restricted && eased > 0.85f && Vector2.Distance(iconPos, mouse) < HitRadius;
+            bool hov = !restricted && eased > 0.85f && Vector2.Distance(iconPos, mouse) < 19f;
             if (anyHoveredCheck) hov = false;
             if (hov) anyHoveredCheck = true;
             isHovered[i] = hov;
         }
 
-        // Second pass: advance breath timers and lerp scales
-        for (int i = 0; i < OptionCount; i++)
+        for (int i = 0; i < 3; i++)
         {
-            float scaleTarget = isHovered[i] ? HoverScale : BaseScale;
-            _buttonScale[i] += (scaleTarget - _buttonScale[i]) * ScaleLerpSpeed;
+            float scaleTarget = isHovered[i] ? 1.22f : 1f;
+            _buttonScale[i] += (scaleTarget - _buttonScale[i]) * 0.18f;
         }
 
         sb.End();
         sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
 
-        for (int i = 0; i < OptionCount; i++)
+        for (int i = 0; i < 3; i++)
         {
             Option opt = (Option)i;
             Vector2 iconPos = GetOptionPos(opt);
@@ -238,15 +216,13 @@ public sealed class GemLockRadialSystem : ModSystem
             Color tint = restricted ? new Color(80, 80, 80, 160) : Color.White;
             tint *= eased;
 
-            // Combine open-anim scale with our live button scale
             float combinedScale = eased * _buttonScale[i];
 
             Texture2D bg = TextureAssets.WireUi[hovered ? 1 : 0].Value;
             Texture2D icon = IconTexture(opt);
 
             sb.Draw(bg, iconPos, null, tint, 0f, bg.Size() / 2f, combinedScale, SpriteEffects.None, 0f);
-            float baseIconScale = opt == Option.RemoveGem ? 0.78f : 1f;
-            sb.Draw(icon, iconPos, null, tint, 0f, icon.Size() / 2f, baseIconScale * combinedScale, SpriteEffects.None, 0f);
+            sb.Draw(icon, iconPos, null, tint, 0f, icon.Size() / 2f, (opt == Option.RemoveGem ? 0.78f : 1f) * combinedScale, SpriteEffects.None, 0f);
 
             if (hovered)
             {
@@ -262,8 +238,6 @@ public sealed class GemLockRadialSystem : ModSystem
         sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, Main.GameViewMatrix.TransformationMatrix);
 
         var font = FontAssets.MouseText.Value;
-        const float labelScale = 0.5f;
-        const float labelOffsetY = 26f;
 
         for (int i = 0; i < 3; i++)
         {
@@ -277,13 +251,15 @@ public sealed class GemLockRadialSystem : ModSystem
                 Team lockTeam = GemLockHelper.GetTeamForOrigin(TargetOrigin);
                 if (lockTeam != Team.None)
                 {
-                    int capW = ModContent.GetInstance<TeamGlorySystem>().GetMaxHalfWidth(lockTeam);
-                    int capH = ModContent.GetInstance<TeamGlorySystem>().GetMaxHalfHeight(lockTeam);
-                    int glory = ModContent.GetInstance<TeamGlorySystem>().GetGlory(lockTeam);
-                    gloryCapStr = $" (max {capW * 2 + 1}x{capH * 2 + 1} | {glory} glory)";
+                    var glory = ModContent.GetInstance<TeamGlorySystem>();
+                    int capW = glory.GetMaxHalfWidth(lockTeam);
+                    int capH = glory.GetMaxHalfHeight(lockTeam);
+                    int pts = glory.GetGlory(lockTeam);
+                    gloryCapStr = $" (max {capW * 2 + 1}x{capH * 2 + 1} | {pts} glory)";
                 }
             }
 
+            var zones = ModContent.GetInstance<GemLockZones>();
             string optLabel = opt switch
             {
                 Option.RemoveGem => "Remove Gem",
@@ -291,14 +267,13 @@ public sealed class GemLockRadialSystem : ModSystem
                     ? "Resize  (party only)"
                     : $"Resize{gloryCapStr}",
                 Option.ToggleProtection =>
-                    ModContent.GetInstance<GemLockZones>().HasActiveZoneElsewhere(TargetOrigin)
+                    zones.HasActiveZoneElsewhere(TargetOrigin)
                         ? "Already active elsewhere"
-                    : (!ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin)
-                        && ModContent.GetInstance<GemLockZones>().HasOverlappingEnemyZone(TargetOrigin))
+                    : (!zones.IsZoneEnabled(TargetOrigin) && zones.HasOverlappingEnemyZone(TargetOrigin))
                         ? "Blocked by enemy zone"
-                    : !ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin)
+                    : !zones.IsZoneEnabled(TargetOrigin)
                         ? "Activate Zone (party only)"
-                    : ModContent.GetInstance<GemLockZones>().IsProtectionEnabled(TargetOrigin)
+                    : zones.IsProtectionEnabled(TargetOrigin)
                         ? "Disable Protection"
                     : (GemLockHelper.GetTeamForOrigin(TargetOrigin) != Team.None
                         && (Team)Main.LocalPlayer.team != GemLockHelper.GetTeamForOrigin(TargetOrigin))
@@ -308,10 +283,8 @@ public sealed class GemLockRadialSystem : ModSystem
             };
 
             Vector2 iconPos = GetOptionPos(opt);
-            Vector2 labelSize = font.MeasureString(optLabel) * labelScale;
-            // Offset the label downward proportionally to the button's current scale so it doesn't overlap
-            float dynOffsetY = labelOffsetY * _buttonScale[i];
-            Vector2 labelPos = iconPos + new Vector2(-labelSize.X / 2f, dynOffsetY);
+            Vector2 labelSize = font.MeasureString(optLabel) * 0.5f;
+            Vector2 labelPos = iconPos + new Vector2(-labelSize.X / 2f, 26f * _buttonScale[i]);
             Color labelColor = IsTeamRestricted(opt) ? new Color(130, 130, 130) : Color.White;
             Utils.DrawBorderString(sb, optLabel, labelPos, labelColor, 0.5f);
         }
@@ -332,16 +305,18 @@ public sealed class GemLockRadialSystem : ModSystem
 
         var world = new Rectangle((cx - _resizePreviewHW) * 16, (cy - _resizePreviewHH) * 16, (_resizePreviewHW * 2 + 1) * 16, (_resizePreviewHH * 2 + 1) * 16);
 
-        const int animEnd = 15;
-        float animT = Utils.GetLerpValue(0, animEnd, _resizeAnimTimer, clamped: true);
+        float animT = Utils.GetLerpValue(0, 15, _resizeAnimTimer, clamped: true);
         animT = 1f - (1f - animT) * (1f - animT) * (1f - animT);
 
         int sw = (int)(world.Width * animT) / 16 * 16;
         int sh = (int)(world.Height * animT) / 16 * 16;
 
-        var dest = new Rectangle(world.X + (world.Width - sw) / 2 - (int)Main.screenPosition.X, world.Y + (world.Height - sh) / 2 - (int)Main.screenPosition.Y, sw, sh);
+        var dest = new Rectangle(
+            world.X + (world.Width - sw) / 2 - (int)Main.screenPosition.X,
+            world.Y + (world.Height - sh) / 2 - (int)Main.screenPosition.Y,
+            sw, sh);
 
-        float tileBorderT = Utils.GetLerpValue(animEnd, animEnd + 15, _resizeAnimTimer, clamped: true);
+        float tileBorderT = Utils.GetLerpValue(15, 30, _resizeAnimTimer, clamped: true);
         tileBorderT *= (1f - tileBorderT) * 4f;
 
         sb.End();
@@ -351,7 +326,8 @@ public sealed class GemLockRadialSystem : ModSystem
         shader.Parameters.globalTime = (float)Main.timeForVisualEffects;
         shader.Parameters.teamColor = teamColor.ToVector3();
         shader.Parameters.baseTexture = new HlslSampler2D { Texture = Assets.InvisPixel.Asset.Value, Sampler = SamplerState.LinearClamp };
-        shader.Parameters.tileUV = new Vector2(animT > 0f ? (16f / world.Width) / animT : 0f, animT > 0f ? (16f / world.Height) / animT : 0f);
+        shader.Parameters.tileUV = new Vector2(animT > 0f ? (16f / world.Width) / animT : 0f,
+                                                       animT > 0f ? (16f / world.Height) / animT : 0f);
         shader.Parameters.borderFade = 0.1f;
         shader.Parameters.area = 320;
         shader.Parameters.tileBorderWhite = tileBorderT;
@@ -394,12 +370,11 @@ public sealed class GemLockRadialSystem : ModSystem
 
         if (opt == Option.ToggleProtection)
         {
-            bool zoneEnabled = ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin);
-            if (!zoneEnabled)
+            var zones = ModContent.GetInstance<GemLockZones>();
+            if (!zones.IsZoneEnabled(TargetOrigin))
                 return TextureAssets.Item[ItemID.GoldenKey].Value;
 
-            bool protEnabled = ModContent.GetInstance<GemLockZones>().IsProtectionEnabled(TargetOrigin);
-            return TextureAssets.Item[protEnabled ? ItemID.GoldenKey : ItemID.ChestLock].Value;
+            return TextureAssets.Item[zones.IsProtectionEnabled(TargetOrigin) ? ItemID.GoldenKey : ItemID.ChestLock].Value;
         }
 
         return TextureAssets.MagicPixel.Value;
@@ -426,9 +401,9 @@ public sealed class GemLockRadialSystem : ModSystem
         for (int tx = 0; tx < 3; tx++)
             for (int ty = 0; ty < 3; ty++)
             {
-                var t = Main.tile[origin.X + tx, origin.Y + ty];
-                if (t.HasTile && t.TileFrameY >= 54)
-                    t.TileFrameY -= 54;
+                var tile = Main.tile[origin.X + tx, origin.Y + ty];
+                if (tile.HasTile && tile.TileFrameY >= 54)
+                    tile.TileFrameY -= 54;
             }
 
         ModContent.GetInstance<GemLockZones>().RefreshLock(origin);
@@ -437,8 +412,7 @@ public sealed class GemLockRadialSystem : ModSystem
 
     private static void SendRemoveGemRequest(Point origin)
     {
-        var mod = ModContent.GetInstance<OxidizedMediumcore>();
-        var packet = mod.GetPacket();
+        var packet = ModContent.GetInstance<OxidizedMediumcore>().GetPacket();
         packet.Write((byte)OxidizedMediumcore.PacketID.RemoveGemRequest);
         packet.Write(origin.X);
         packet.Write(origin.Y);
@@ -466,8 +440,9 @@ public sealed class GemLockRadialSystem : ModSystem
                 Team lockTeam = GemLockHelper.GetTeamForOrigin(TargetOrigin);
                 if (lockTeam != Team.None)
                 {
-                    _resizeGloryCapW = ModContent.GetInstance<TeamGlorySystem>().GetMaxHalfWidth(lockTeam);
-                    _resizeGloryCapH = ModContent.GetInstance<TeamGlorySystem>().GetMaxHalfHeight(lockTeam);
+                    var glory = ModContent.GetInstance<TeamGlorySystem>();
+                    _resizeGloryCapW = glory.GetMaxHalfWidth(lockTeam);
+                    _resizeGloryCapH = glory.GetMaxHalfHeight(lockTeam);
                 }
                 else
                 {
@@ -480,16 +455,15 @@ public sealed class GemLockRadialSystem : ModSystem
 
             case Option.ToggleProtection:
                 Active = false;
-                if (!ModContent.GetInstance<GemLockZones>().IsZoneEnabled(TargetOrigin))
+                var zones = ModContent.GetInstance<GemLockZones>();
+                if (!zones.IsZoneEnabled(TargetOrigin))
                 {
-                    if (ModContent.GetInstance<GemLockZones>().HasActiveZoneElsewhere(TargetOrigin))
-                        break;
-                    if (ModContent.GetInstance<GemLockZones>().HasOverlappingEnemyZone(TargetOrigin))
-                        break;
-                    ModContent.GetInstance<GemLockZones>().ToggleZone(TargetOrigin);
+                    if (zones.HasActiveZoneElsewhere(TargetOrigin)) break;
+                    if (zones.HasOverlappingEnemyZone(TargetOrigin)) break;
+                    zones.ToggleZone(TargetOrigin);
                 }
                 else
-                    ModContent.GetInstance<GemLockZones>().ToggleProtection(TargetOrigin);
+                    zones.ToggleProtection(TargetOrigin);
 
                 if (Main.netMode == NetmodeID.MultiplayerClient)
                     NetMessage.SendTileSquare(-1, TargetOrigin.X, TargetOrigin.Y, 3, 3);

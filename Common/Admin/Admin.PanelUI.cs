@@ -20,24 +20,16 @@ public static class AdminPanelUI
     public static int RowH => 16;
     public static float TitleScale => 0.85f;
     public static float RowScale => 0.70f;
-
     private static int PlayerAreaMaxH => 110;
     private static int HeaderH => 158;
-
     private static int GloryHeaderH => 164;
-
     private static int _totalPlayerCount = 0;
-
-    private static int ActivePlayerCount => _totalPlayerCount;
     private static int PlayerContentH => _totalPlayerCount * 22;
     private static int PlayerAreaVisibleH => System.Math.Min(PlayerAreaMaxH, PlayerContentH);
     public static int PanelH => HeaderH + GloryHeaderH + PlayerAreaVisibleH + PanelPad;
-
     private static float _scrollOffset = 0f;
     private static int _prevScrollValue = int.MinValue;
-
     private static bool _prevLeftDown = false;
-
     private static int _holdTick = 0;
     private const int HoldDelay = 20;
     private const int HoldInterval = 4;

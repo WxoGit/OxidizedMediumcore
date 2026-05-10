@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using OxidizedMediumcore.Common.Gemlocks;
 using System.Collections.Generic;
 using System.IO;
 using Terraria;
@@ -15,8 +16,8 @@ namespace OxidizedMediumcore.Common.BossOwnership;
 
 public static class BossOwnershipSync
 {
-    private static double _lastBroadcastTime = -999.0;
     private const double BroadcastCooldownSeconds = 2.0;
+    private static double _lastBroadcastTime = -999.0;
 
     public static void BroadcastOwnership(NPC npc, Team newOwner, bool isSteal)
     {
@@ -29,26 +30,21 @@ public static class BossOwnershipSync
 
         _lastBroadcastTime = now;
 
-        string bossName = npc.GivenOrTypeName;
-        string teamName = TeamLabel(newOwner);
+        string teamName = GemLockHelper.GetTeamName(newOwner);
         Color teamColor = BossOwnershipSystem.TeamColor(newOwner);
-
         string msg = isSteal
-            ? $"{teamName} party stole {bossName}!"
-            : $"{teamName} party is now fighting {bossName}!";
+            ? $"{teamName} party stole {npc.GivenOrTypeName}!"
+            : $"{teamName} party is now fighting {npc.GivenOrTypeName}!";
 
         ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(msg), teamColor);
 
-        if (Main.netMode != NetmodeID.Server)
-            return;
-
-        SendSync(npc.whoAmI, newOwner, toClient: -1, ignoreClient: -1);
+        if (Main.netMode == NetmodeID.Server)
+            SendSync(npc.whoAmI, newOwner, toClient: -1, ignoreClient: -1);
     }
 
     public static void SendSync(int npcWhoAmI, Team owner, int toClient, int ignoreClient)
     {
-        var mod = ModContent.GetInstance<OxidizedMediumcore>();
-        var packet = mod.GetPacket();
+        var packet = ModContent.GetInstance<OxidizedMediumcore>().GetPacket();
         packet.Write((byte)OxidizedMediumcore.PacketID.BossOwnerSync);
         packet.Write((short)npcWhoAmI);
         packet.Write((byte)owner);
@@ -58,24 +54,14 @@ public static class BossOwnershipSync
     public static void HandleSync(BinaryReader reader)
     {
         int npcWhoAmI = reader.ReadInt16();
-        var owner = (Team)reader.ReadByte();
+        Team owner = (Team)reader.ReadByte();
         ModContent.GetInstance<BossOwnershipClient>().SetOwner(npcWhoAmI, owner);
     }
-
-    private static string TeamLabel(Team t) => t switch
-    {
-        Team.Red => "Red",
-        Team.Green => "Green",
-        Team.Blue => "Blue",
-        Team.Yellow => "Yellow",
-        Team.Pink => "Pink",
-        _ => "Unknown",
-    };
 }
 
 public sealed class BossOwnershipClient : ModSystem
 {
-    private readonly Dictionary<int, Team> _ownerMap = [];
+    private readonly Dictionary<int, Team> _ownerMap = new();
 
     public void SetOwner(int npcWhoAmI, Team owner)
     {
@@ -89,16 +75,16 @@ public sealed class BossOwnershipClient : ModSystem
 
     public override void PostUpdateEverything()
     {
-        List<int> toRemove = [];
+        var toRemove = new List<int>();
 
-        foreach (var key in _ownerMap.Keys)
+        foreach (int key in _ownerMap.Keys)
         {
             if (key < 0 || key >= Main.maxNPCs || !Main.npc[key].active)
                 toRemove.Add(key);
         }
 
-        foreach (var k in toRemove)
-            _ownerMap.Remove(k);
+        foreach (int key in toRemove)
+            _ownerMap.Remove(key);
     }
 
     public override void OnWorldUnload() => _ownerMap.Clear();
@@ -106,7 +92,9 @@ public sealed class BossOwnershipClient : ModSystem
     public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
     {
         int idx = layers.FindIndex(l => l.Name == "Vanilla: Cursor");
-        if (idx < 0) idx = layers.Count;
+        
+        if (idx < 0) 
+            idx = layers.Count;
 
         layers.Insert(idx, new LegacyGameInterfaceLayer("OxidizedMediumcore: Boss Ownership Tags", DrawOwnershipTags, InterfaceScaleType.Game));
     }
@@ -119,16 +107,17 @@ public sealed class BossOwnershipClient : ModSystem
         var sb = Main.spriteBatch;
 
         sb.End();
-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
+        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend,
+            SamplerState.LinearClamp, DepthStencilState.None,
+            RasterizerState.CullNone, null,
+            Main.GameViewMatrix.TransformationMatrix);
 
         var drawnTeams = new HashSet<Team>();
 
         foreach (var (whoAmI, team) in _ownerMap)
         {
-            var npc = Main.npc[whoAmI];
-            if (!npc.active)
-                continue;
-            if (BossOwnershipSystem.IsWormSegment(npc.type))
+            NPC npc = Main.npc[whoAmI];
+            if (!npc.active || BossOwnershipSystem.IsWormSegment(npc.type))
                 continue;
             if (!drawnTeams.Add(team))
                 continue;
@@ -137,53 +126,52 @@ public sealed class BossOwnershipClient : ModSystem
         }
 
         sb.End();
-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, Main.UIScaleMatrix);
+        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend,
+            Main.DefaultSamplerState, DepthStencilState.None,
+            Main.Rasterizer, null,
+            Main.UIScaleMatrix);
 
         return true;
     }
 
     private static void DrawTag(SpriteBatch sb, NPC npc, Team team)
     {
-        Vector2 worldPos = new Vector2(npc.position.X + npc.width * 0.5f, npc.position.Y - 28f);
+        Vector2 worldPos = new(npc.position.X + npc.width * 0.5f, npc.position.Y - 28f);
         Vector2 screenPos = worldPos - Main.screenPosition;
 
         Color teamColor = BossOwnershipSystem.TeamColor(team);
-        string label = TeamLabel(team);
+        string label = GemLockHelper.GetTeamName(team);
 
         const float textScale = 0.5f;
-        var font = FontAssets.MouseText.Value;
-        Vector2 textSize = font.MeasureString(label) * textScale;
         const float padX = 5f;
         const float padY = 2f;
+
+        var font = FontAssets.MouseText.Value;
+        Vector2 textSize = font.MeasureString(label) * textScale;
         float pillW = textSize.X + padX * 2f;
         float pillH = textSize.Y + padY * 2f;
 
-        var pillRect = new Rectangle((int)(screenPos.X - pillW * 0.5f), (int)(screenPos.Y - pillH), (int)pillW, (int)pillH);
+        var pillRect = new Rectangle(
+            (int)(screenPos.X - pillW * 0.5f),
+            (int)(screenPos.Y - pillH),
+            (int)pillW,
+            (int)pillH);
 
         sb.Draw(TextureAssets.MagicPixel.Value, pillRect, new Color(0, 0, 0, 160));
         DrawBorder(sb, pillRect, teamColor * 0.85f);
 
-        Vector2 textPos = new Vector2(screenPos.X - textSize.X * 0.5f, screenPos.Y - pillH + padY);
+        Vector2 textPos = new(screenPos.X - textSize.X * 0.5f, screenPos.Y - pillH + padY);
         Utils.DrawBorderString(sb, label, textPos, teamColor, textScale);
     }
 
     private static void DrawBorder(SpriteBatch sb, Rectangle r, Color c)
     {
-        sb.Draw(TextureAssets.MagicPixel.Value, new Rectangle(r.X, r.Y, r.Width, 1), c);
-        sb.Draw(TextureAssets.MagicPixel.Value, new Rectangle(r.X, r.Bottom - 1, r.Width, 1), c);
-        sb.Draw(TextureAssets.MagicPixel.Value, new Rectangle(r.X, r.Y, 1, r.Height), c);
-        sb.Draw(TextureAssets.MagicPixel.Value, new Rectangle(r.Right - 1, r.Y, 1, r.Height), c);
+        var px = TextureAssets.MagicPixel.Value;
+        sb.Draw(px, new Rectangle(r.X, r.Y, r.Width, 1), c);
+        sb.Draw(px, new Rectangle(r.X, r.Bottom - 1, r.Width, 1), c);
+        sb.Draw(px, new Rectangle(r.X, r.Y, 1, r.Height), c);
+        sb.Draw(px, new Rectangle(r.Right - 1, r.Y, 1, r.Height), c);
     }
-
-    private static string TeamLabel(Team t) => t switch
-    {
-        Team.Red => "Red",
-        Team.Green => "Green",
-        Team.Blue => "Blue",
-        Team.Yellow => "Yellow",
-        Team.Pink => "Pink",
-        _ => "?",
-    };
 }
 
 public sealed class BossOwnershipSyncOnJoin : ModPlayer
@@ -195,16 +183,15 @@ public sealed class BossOwnershipSyncOnJoin : ModPlayer
 
         var sys = ModContent.GetInstance<BossOwnershipSystem>();
 
-        foreach (var npc in Main.ActiveNPCs)
+        foreach (NPC npc in Main.ActiveNPCs)
         {
-            if (npc.boss || BossOwnershipSystem.IsBossSegment(npc.type))
-            {
-                var owner = sys.GetOwner(npc.whoAmI);
-                if (owner != Team.None)
-                {
-                    BossOwnershipSync.SendSync(npc.whoAmI, owner, toClient: Player.whoAmI, ignoreClient: -1);
-                }
-            }
+            if (!npc.boss && !BossOwnershipSystem.IsBossSegment(npc.type))
+                continue;
+
+            Team owner = sys.GetOwner(npc.whoAmI);
+
+            if (owner != Team.None)
+                BossOwnershipSync.SendSync(npc.whoAmI, owner, toClient: Player.whoAmI, ignoreClient: -1);
         }
     }
 }

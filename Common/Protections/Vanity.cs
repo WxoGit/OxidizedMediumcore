@@ -29,6 +29,7 @@ public sealed class VanityProtection : ModSystem
     private static void PatchDropItems(ILContext il)
     {
         var c = new ILCursor(il);
+
         while (c.TryGotoNext(MoveType.Before, i => i.MatchCall<Player>("TryDroppingSingleItem") || i.MatchCallvirt<Player>("TryDroppingSingleItem")))
         {
             c.Next!.OpCode = OpCodes.Call;

@@ -4,6 +4,11 @@ using Terraria.ModLoader;
 
 namespace OxidizedMediumcore.Common.Admin;
 
+public sealed class AdminPlayer : ModPlayer
+{
+    public bool IsAdmin;
+}
+
 public sealed class GrantAdmin : ModCommand
 {
     public override string Command => "omadmin";
