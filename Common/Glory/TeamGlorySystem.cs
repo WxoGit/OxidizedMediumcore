@@ -232,7 +232,7 @@ public sealed class TeamGlorySystem : ModSystem
 
         string bossName = Lang.GetNPCNameValue(npcType);
         string msg = $"{GemLockHelper.GetTeamName(newKiller)} party stole {bossName} from {GemLockHelper.GetTeamName(prevKiller)} party — glory transferred!";
-        Color col = GemLockZones.TeamColor(newKiller) * 1.2f;
+        Color col = GemLockHelper.TeamColor(newKiller) * 1.2f;
         col.A = 255;
         ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(msg), col);
     }
@@ -261,7 +261,7 @@ public sealed class TeamGlorySystem : ModSystem
             return;
 
         string sign = delta > 0 ? "+" : "";
-        Color col = GemLockZones.TeamColor(team) * 1.2f;
+        Color col = GemLockHelper.TeamColor(team) * 1.2f;
         col.A = 255;
         ChatHelper.BroadcastChatMessage(
             NetworkText.FromLiteral($"{GemLockHelper.GetTeamName(team)} party: {sign}{delta} glory"),

@@ -28,6 +28,8 @@ public static class GemLockHelper
         { 216, Team.Pink   },
     };
 
+    public static Color TeamColor(Team team) => Main.teamColor[(int)team];
+
     public static Point GetOrigin(int i, int j)
     {
         var tile = Main.tile[i, j];

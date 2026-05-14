@@ -365,7 +365,7 @@ public static class AdminPanelUI
         const int ValueW = 34;
         const int MaxBarW = 80;
 
-        Color teamCol = GemLockZones.TeamColor(team);
+        Color teamCol = GemLockHelper.TeamColor(team);
         string teamName = GemLockHelper.GetTeamName(team);
 
         int curGlory = glory.GetGlory(team);

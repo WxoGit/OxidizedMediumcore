@@ -589,14 +589,4 @@ public sealed class GemLockZones : ModSystem
         _hasGem.Clear();
         _zoneActive.Clear();
     }
-
-    public static Color TeamColor(Team team) => team switch
-    {
-        Team.Red => new Color(255, 80, 80),
-        Team.Green => new Color(80, 255, 80),
-        Team.Blue => new Color(80, 150, 255),
-        Team.Yellow => new Color(255, 230, 50),
-        Team.Pink => new Color(255, 150, 200),
-        _ => Color.White,
-    };
 }

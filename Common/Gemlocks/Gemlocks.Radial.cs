@@ -182,6 +182,8 @@ public sealed class GemLockRadialSystem : ModSystem
         float t = _openAnimTimer / 12f;
         float eased = 1f - (1f - t) * (1f - t) * (1f - t);
 
+        float uiMult = MathHelper.Lerp(1f, 2.5f, Math.Clamp(Main.UIScale - 1f, 0f, 1f));
+
         bool[] isHovered = new bool[3];
         bool anyHoveredCheck = false;
         for (int i = 0; i < 3; i++)
@@ -189,7 +191,7 @@ public sealed class GemLockRadialSystem : ModSystem
             Option opt = (Option)i;
             bool restricted = IsTeamRestricted(opt);
             Vector2 iconPos = GetOptionPos(opt);
-            bool hov = !restricted && eased > 0.85f && Vector2.Distance(iconPos, mouse) < 19f;
+            bool hov = !restricted && eased > 0.85f && Vector2.Distance(iconPos, mouse) < (19f * uiMult);
             if (anyHoveredCheck) hov = false;
             if (hov) anyHoveredCheck = true;
             isHovered[i] = hov;
@@ -216,7 +218,7 @@ public sealed class GemLockRadialSystem : ModSystem
             Color tint = restricted ? new Color(80, 80, 80, 160) : Color.White;
             tint *= eased;
 
-            float combinedScale = eased * _buttonScale[i];
+            float combinedScale = eased * _buttonScale[i] * uiMult;
 
             Texture2D bg = TextureAssets.WireUi[hovered ? 1 : 0].Value;
             Texture2D icon = IconTexture(opt);
@@ -298,7 +300,7 @@ public sealed class GemLockRadialSystem : ModSystem
 
     private void DrawResizeOverlay(SpriteBatch sb)
     {
-        Color teamColor = GemLockZones.TeamColor(GemLockHelper.GetTeamForOrigin(TargetOrigin));
+        Color teamColor = GemLockHelper.TeamColor(GemLockHelper.GetTeamForOrigin(TargetOrigin));
 
         int cx = TargetOrigin.X + 1;
         int cy = TargetOrigin.Y + 1;

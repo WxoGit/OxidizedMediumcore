@@ -1,1 +1,15 @@
+Configs: {
+	OxidizedClientConfig: {
+		DisplayName: Oxidized Client Config
 
+		AlwaysRenderGemlockZones: {
+			Label: Always Render Gemlock Zones
+			Tooltip: ""
+		}
+
+		GemlockZonesIntensity: {
+			Label: Gemlock Zones Intensity
+			Tooltip: ""
+		}
+	}
+}

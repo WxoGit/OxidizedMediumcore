@@ -48,7 +48,7 @@ public sealed class GemLockZoneRenderer : ModSystem
         if (!ModContent.GetInstance<GemLockZones>().IsProtectionEnabled(origin))
             return;
 
-        Color color = GemLockZones.TeamColor(GemLockHelper.GetTeamForOrigin(origin));
+        Color color = GemLockHelper.TeamColor(GemLockHelper.GetTeamForOrigin(origin));
         var world = ModContent.GetInstance<GemLockZones>().GetZoneRect(origin);
         int timer = ModContent.GetInstance<GemLockZones>().GetActivationTimer(origin);
         const int animEnd = 15;

@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using OxidizedMediumcore.Common.Admin;
+using OxidizedMediumcore.Common.Gemlocks;
+using OxidizedMediumcore.Common.Glory;
 using System;
 using System.IO;
 using Terraria;
@@ -9,6 +11,7 @@ using Terraria.GameContent.UI;
 using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Terraria.UI.Chat;
 using Terraria.UI.Gamepad;
 
 namespace OxidizedMediumcore.Common.TeamControl;
@@ -117,19 +120,58 @@ public sealed class TeamControlSystem : ModSystem
         }
 
         float textScale = 0.65f;
-        string[] lines = locked ? new[] { "Party selection", "is locked" } : new[] { "Choose your", "party!" };
         float rightEdge = shieldsL + 2 * 15f;
         float lineHeight = FontAssets.ItemStack.Value.MeasureString("A").Y * textScale;
         float textY = shieldsT + 3 * 20f;
 
         Color textColor = locked ? new Color(180, 180, 180) : new Color(255, 230, 100);
-        foreach (string line in lines)
+
+        if (locked)
         {
-            float lw = FontAssets.ItemStack.Value.MeasureString(line).X * textScale;
-            Utils.DrawBorderString(Main.spriteBatch, line, new Vector2(rightEdge - lw, textY), textColor, textScale);
-            textY += lineHeight;
+            int localTeam = Main.LocalPlayer.team;
+            
+            if (localTeam == 0)
+            {
+                string[] lines = new[] { "Party selection", "is locked" };
+                foreach (string line in lines)
+                {
+                    float lw = FontAssets.ItemStack.Value.MeasureString(line).X * textScale;
+                    Utils.DrawBorderString(Main.spriteBatch, line, new Vector2(rightEdge - lw, textY), textColor, textScale);
+                    textY += lineHeight;
+                }
+            }
+            else
+            {
+                string teamName = GemLockHelper.GetTeamName((Terraria.Enums.Team)localTeam);
+                Color tColor = GemLockHelper.TeamColor((Terraria.Enums.Team)localTeam);
+                int glory = ModContent.GetInstance<TeamGlorySystem>().GetGlory((Terraria.Enums.Team)localTeam);
+                string hex = tColor.R.ToString("X2") + tColor.G.ToString("X2") + tColor.B.ToString("X2");
+
+                float chatScale = textScale * 1.15f;
+
+                string line1 = $"You are on [c/{hex}:{teamName}] team";
+                Vector2 size1 = ChatManager.GetStringSize(FontAssets.MouseText.Value, line1, new Vector2(chatScale));
+                ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, line1, new Vector2(rightEdge - size1.X, textY), textColor, 0f, Vector2.Zero, new Vector2(chatScale), -1f, 1.5f);
+                
+                textY += lineHeight;
+                
+                string line2 = $"[c/{hex}:{teamName}] glory is now: [c/{hex}:{glory}]";
+                Vector2 size2 = ChatManager.GetStringSize(FontAssets.MouseText.Value, line2, new Vector2(chatScale));
+                ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, line2, new Vector2(rightEdge - size2.X, textY), textColor, 0f, Vector2.Zero, new Vector2(chatScale), -1f, 1.5f);
+            }
+        }
+        else
+        {
+            string[] lines = new[] { "Choose your", "party!" };
+            foreach (string line in lines)
+            {
+                float lw = FontAssets.ItemStack.Value.MeasureString(line).X * textScale;
+                Utils.DrawBorderString(Main.spriteBatch, line, new Vector2(rightEdge - lw, textY), textColor, textScale);
+                textY += lineHeight;
+            }
         }
 
+        textY += 20;
         AdminPanelUI.Draw(Main.spriteBatch, (int)MathF.Round(shieldsL - 14 * 20), (int)textY + 6);
     }
 }
